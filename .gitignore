@@ -1,0 +1,41 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.env
+
+# ── Streamlit ─────────────────────────────────────────────────────────────────
+.streamlit/
+.model_cache/
+
+# ── Large model artifacts (exceed GitHub 100 MB limit) ────────────────────────
+# Trained .joblib models — the two RF models and distractor index are 44–225 MB each
+models/model_a/traditional/rfVerifierModel.joblib
+models/model_a/traditional/rfQuestionRanker.joblib
+models/model_b/traditional/raceDistractorIndex.joblib
+
+# T5 neural baseline weights (231 MB)
+models/model_a/neural/model_a_final/model.safetensors
+models/model_a/neural/model_a_final/training_args.bin
+
+# ── Large data files ──────────────────────────────────────────────────────────
+data/raw/train.csv
+data/raw/*.zip
+data/processed/*.csv
+data/processed/*.parquet
+
+# ── Jupyter notebook outputs ──────────────────────────────────────────────────
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
