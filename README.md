@@ -1,162 +1,196 @@
 # RACE Quiz Studio
 
-An end-to-end reading comprehension quiz generator trained on the RACE dataset. Give it any English passage and it produces a four-option MCQ with graduated hints and a developer analytics dashboard.
+RACE Quiz Studio is an end-to-end reading-comprehension system that turns an
+English passage into a four-option multiple-choice question. It combines
+template-based question generation with trained ranking models, corpus-backed
+distractor selection, graduated hints, and a Streamlit analytics dashboard.
 
-## Project Structure
+## Highlights
 
+- Generates a question, four shuffled options, and three progressively more
+  specific hints from a supplied passage.
+- Scores question candidates with an optional Random Forest ranker trained on
+  RACE supervision.
+- Ranks distractors with a Random Forest using edit distance, length,
+  in-passage, and lexical-similarity features.
+- Verifies answer options with a soft vote across Logistic Regression,
+  calibrated SVM, and Random Forest models. Naive Bayes is trained and reported
+  as a comparison model, but is excluded from the final vote.
+- Uses the same 12-dimensional feature pipeline during training and inference:
+  10 lexical/position features plus two K-Means cluster features.
+- Includes a four-screen Streamlit interface for passage input, quiz answering,
+  graduated hints, and model diagnostics.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Passage] --> B[Answer candidate extraction]
+    B --> C[Template question generation]
+    C --> D{Question ranker available?}
+    D -->|Yes| E[RF question ranking]
+    D -->|No| F[Rule-based selection]
+    B --> G[Passage and RACE distractor candidates]
+    G --> H[RF distractor ranking]
+    E --> I[Quiz assembly]
+    F --> I
+    H --> I
+    I --> J[LR + SVM + RF answer verifier]
+    J --> K[Streamlit UI and diagnostics]
 ```
-AI_PROJECT/
-├── features.py                  # Shared feature engineering (training + inference)
-├── question_ranker.py           # RF question ranker features and candidate generation
-├── template_quiz_pipeline.py    # Full inference pipeline (EnsembleAnswerPredictor, QuestionRankerPredictor, ...)
+
+The optional large artifacts have explicit fallbacks. A clean clone can run all
+three bundled examples with the committed lightweight models. Adding the RACE
+CSV enables dataset browsing and corpus-backed distractor retrieval; adding the
+question-ranker and RF-verifier artifacts enables the full trained pipeline.
+
+## Repository Layout
+
+```text
+.
+├── features.py                  # Shared Model A feature engineering
+├── question_ranker.py           # Candidate generation and ranker features
+├── template_quiz_pipeline.py    # Quiz assembly and model wrappers
 ├── src/
-│   ├── model_a_train.py         # Train Model A: LR+SVM+NB+RF ensemble + T5 baseline
-│   ├── model_b_train.py         # Train Model B: distractor RF ranker
-│   ├── question_ranker_train.py # Train RF question ranker
-│   ├── preprocessing.py         # Shared data loading and cleaning
-│   ├── inference.py             # ReadingComprehensionPipeline class
-│   ├── evaluate.py              # CLI: evaluate MCQ accuracy on train.csv
-│   └── evaluate_distractors.py  # CLI: evaluate distractor quality
-├── ui/
-│   ├── app.py                   # Streamlit single-page app
-│   └── components/
-│       ├── state.py             # Session state and pipeline calls
-│       ├── styles.py            # CSS injection and metrics data
-│       └── sample_data.py       # Built-in sample passages
-├── models/
-│   ├── model_a/traditional/     # LR, SVM, NB, RF verifiers + TF-IDF + KMeans + SVD
-│   ├── model_a/neural/          # T5-small fine-tuned weights (not in git, >100MB)
-│   └── model_b/traditional/     # RF distractor ranker + distractor index
-├── notebooks/
-│   ├── EDA.ipynb                # Dataset exploration
-│   └── experiments.ipynb        # Training experiments log
-├── tests/
-│   └── test_inference.py        # Pytest unit tests
-├── report/
-│   └── report.pdf               # Final project report
-├── data/
-│   ├── raw/train.csv            # RACE dataset (not in git, 149MB)
-│   └── processed/               # Intermediate processed files
-└── requirements.txt
+│   ├── inference.py             # Public end-to-end inference facade
+│   ├── preprocessing.py         # RACE loading and preprocessing
+│   ├── model_a_train.py         # Verifier ensemble and T5 baseline training
+│   ├── model_b_train.py         # Distractor-ranker training
+│   ├── question_ranker_train.py # Question-ranker training
+│   ├── evaluate.py              # Generated-quiz evaluation CLI
+│   └── evaluate_distractors.py  # Distractor diagnostics CLI
+├── ui/                          # Streamlit app and reusable UI helpers
+├── tests/                       # Inference and training regression tests
+├── notebooks/                   # Exploratory analysis
+├── models/                      # Versioned lightweight model artifacts
+├── data/                        # Local raw and processed data locations
+└── report/report.pdf            # Project report and full references
 ```
 
-## Quick Setup
+## Quick Start
 
 ```bash
-# 1. Clone and enter the repo
 git clone git@github.com:OrbitalC2/AI_Quiz_Gen.git
 cd AI_Quiz_Gen
 
-# 2. Create a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
 
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Download the RACE dataset
-#    Place train.csv inside data/raw/
-#    Dataset: https://huggingface.co/datasets/ehovy/race
-```
-
-## Running the App
-
-The small model artifacts (LR, SVM, NB, KMeans, SVD, TF-IDF, idfDict) are committed to the repo. The app works out of the box without retraining.
-
-```bash
 streamlit run ui/app.py
 ```
 
-The first page load pre-warms the pipeline in a background thread. By the time you click "Generate Quiz" the models are loaded.
+The app opens with a bundled Rosetta Stone passage. The first page load warms
+the pipeline in a background thread; model loading may take a few seconds.
+
+The RACE dataset is optional for the bundled examples. To browse RACE passages
+or build the full distractor index, download the dataset and place the training
+CSV at `data/raw/train.csv`:
+
+- Dataset: <https://huggingface.co/datasets/ehovy/race>
+- Expected columns: `article`, `question`, `A`, `B`, `C`, `D`, and `answer`
+
+## Model Availability
+
+| Component | Included in Git | Clean-clone behavior |
+|---|---:|---|
+| LR, calibrated SVM, and NB verifier models | Yes | LR + SVM soft vote |
+| TF-IDF, IDF, K-Means, and SVD artifacts | Yes | Full 12-feature extraction |
+| Model B RF distractor ranker | Yes | Ranks available passage distractors |
+| RF verifier | No (116 MB) | Vote continues without RF |
+| RF question ranker | No (44 MB) | Uses rule-based question selection |
+| RACE distractor index | No (225 MB) | Uses passage candidates; all bundled examples remain runnable |
+| T5-small weights | No (231 MB) | Neural comparison is reported unavailable |
+| RACE `train.csv` | No (149 MB) | Dataset browser is disabled |
+
+Large artifacts are intentionally ignored because they exceed or approach
+GitHub's practical repository limits. Generate them with the training commands
+below, or distribute them separately through a model registry or release asset.
 
 ## Training
 
-### Model A — Answer Verifier Ensemble + T5 Baseline
+Run commands from the repository root.
+
+### Model A: answer verifier and T5 baseline
 
 ```bash
-# Train traditional ensemble only (LR + Calibrated SVM + NB + RF + KMeans)
-python3 src/model_a_train.py --task traditional --train-csv data/raw/train.csv
+# Traditional models: LR, calibrated SVM, NB, RF, TF-IDF, K-Means, and SVD
+python -m src.model_a_train \
+  --task traditional \
+  --train-csv data/raw/train.csv
 
-# Train T5-small neural baseline only
-python3 src/model_a_train.py --task neural --train-csv data/raw/train.csv
+# T5-small neural comparison baseline
+python -m src.model_a_train \
+  --task neural \
+  --train-csv data/raw/train.csv
 
-# Train both
-python3 src/model_a_train.py --task all --train-csv data/raw/train.csv
+# Train both paths
+python -m src.model_a_train \
+  --task all \
+  --train-csv data/raw/train.csv
 ```
 
-Artifacts saved to `models/model_a/traditional/` and `models/model_a/neural/model_a_final/`.
+Traditional artifacts are written to `models/model_a/traditional/`; T5 output
+is written to `models/model_a/neural/model_a_final/`.
 
-Training time on full dataset (~87k articles):
-- Traditional ensemble: ~20-40 min depending on CPU
-- T5 fine-tuning (5 epochs, batch 16): ~3-6 hours on GPU, much longer on CPU
-
-### Model B — Distractor Ranker
+### Model B: distractor ranker
 
 ```bash
-python3 src/model_b_train.py --train-csv data/raw/train.csv --sample-size 3000
-```
-
-Artifact saved to `models/model_b/traditional/rfDistractorRanker.joblib`.
-
-Note: model_b_train.py uses `sentence-transformers` to encode options. First run will download `all-MiniLM-L6-v2` (~90MB).
-
-### RF Question Ranker
-
-```bash
-python3 src/question_ranker_train.py \
+python -m src.model_b_train \
   --train-csv data/raw/train.csv \
-  --model-dir models/model_a/traditional
+  --sample-size 3000
 ```
 
-Artifact saved to `models/model_a/traditional/rfQuestionRanker.joblib`.
+The first run downloads `all-MiniLM-L6-v2` through `sentence-transformers`.
+The trained ranker is saved as
+`models/model_b/traditional/rfDistractorRanker.joblib`. The inference pipeline
+builds and caches the corpus distractor index when the RACE CSV is present.
 
-## Evaluation
+### Question ranker
 
 ```bash
-# MCQ accuracy on first 25 articles
-python3 src/evaluate.py --data data/raw/train.csv --limit 25
-
-# Distractor quality breakdown
-python3 src/evaluate_distractors.py --data data/raw/train.csv --limit 25
+python -m src.question_ranker_train \
+  --train-csv data/raw/train.csv \
+  --output-dir models/model_a/traditional
 ```
 
-## Running Tests
+The ranker is saved as
+`models/model_a/traditional/rfQuestionRanker.joblib`.
+
+## Evaluation and Tests
 
 ```bash
-pytest tests/ -v
+# MCQ evaluation on the first 25 RACE rows
+python -m src.evaluate --data data/raw/train.csv --limit 25
+
+# Distractor quality and fallback diagnostics
+python -m src.evaluate_distractors --data data/raw/train.csv --limit 25
+
+# Regression suite
+python -m pytest tests -v
 ```
 
-Tests cover answer candidate extraction, option shuffling, question template quality, feature vector shape, and corpus-backed distractor filtering.
+The tests cover candidate extraction, template quality, option shuffling,
+feature-vector shape, corpus-backed distractor filtering, ensemble membership,
+and generation without external data artifacts.
 
-## Model Results Summary
+## Reported Results
 
 | Component | Metric | Value |
-|---|---|---|
-| Verifier Ensemble | MCQ Accuracy | 36.5% (random: 25%) |
-| Verifier Ensemble | Binary F1 | 0.376 |
-| Verifier Ensemble | 5-fold Cross-Val F1 | 0.526 ± 0.002 |
-| RF Question Ranker | ROC-AUC | 0.972 |
-| RF Question Ranker | Top-1 Match Rate | 66.9% |
-| Distractor Ranker | Accuracy | 88.0% |
-| Distractor Ranker | F1 | 0.83 |
+|---|---|---:|
+| Verifier ensemble | MCQ accuracy | 36.5% (random baseline: 25%) |
+| Verifier ensemble | Binary F1 | 0.376 |
+| Logistic Regression | 5-fold cross-validation F1 | 0.526 ± 0.002 |
+| RF question ranker | ROC-AUC | 0.972 |
+| RF question ranker | Top-1 match rate | 66.9% |
+| RF distractor ranker | Accuracy | 88.0% |
+| RF distractor ranker | F1 | 0.83 |
 
-## Large Files (not in git)
+These are recorded experiment results, not live benchmark runs. See
+`report/report.pdf` for the project methodology and full discussion.
 
-These exceed GitHub's 100MB limit and must be trained locally or obtained separately:
+## Dataset Citation
 
-| File | Size | How to get |
-|---|---|---|
-| `models/model_a/traditional/rfVerifierModel.joblib` | 116 MB | Run `model_a_train.py --task traditional` |
-| `models/model_a/traditional/rfQuestionRanker.joblib` | 44 MB | Run `question_ranker_train.py` |
-| `models/model_b/traditional/raceDistractorIndex.joblib` | 225 MB | Run `model_b_train.py` |
-| `models/model_a/neural/model_a_final/model.safetensors` | 231 MB | Run `model_a_train.py --task neural` |
-| `data/raw/train.csv` | 149 MB | Download from HuggingFace RACE |
-
-## Dataset
-
-Lai, G., Xie, Q., Liu, H., Yang, Y., & Hovy, E. (2017). RACE: Large-scale ReAding Comprehension Dataset From Examinations. EMNLP 2017.  
-https://aclanthology.org/D17-1082
-
-## References
-
-See `report/report.pdf` for full references and project report.
+Lai, G., Xie, Q., Liu, H., Yang, Y., & Hovy, E. (2017). *RACE: Large-scale
+ReAding Comprehension Dataset From Examinations*. EMNLP 2017.
+<https://aclanthology.org/D17-1082>

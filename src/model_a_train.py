@@ -21,7 +21,8 @@ Traditional pipeline
 
   Classifiers : Logistic Regression, Calibrated SVM, Gaussian Naive Bayes,
                 Random Forest
-  Ensemble    : soft-vote (mean predict_proba across all four models)
+  Ensemble    : soft-vote (LR + calibrated SVM + Random Forest)
+                Gaussian Naive Bayes is retained as a comparison model.
 
 Neural baseline (T5)
 --------------------
@@ -72,7 +73,7 @@ from features import (  # noqa: E402
     buildBaseFeatureMatrixBatch,
     buildClusterFeaturesIfAvailable,
 )
-from preprocessing import (  # noqa: E402
+from src.preprocessing import (  # noqa: E402
     explodeOptions,
     fastCleanSeries,
     loadRaceCsv,
@@ -132,11 +133,10 @@ def trainEnsembleVerifier(xTrain, yTrain, randomState=RANDOM_STATE):
     Logistic Regression, Calibrated SVM, Gaussian Naive Bayes, Random Forest.
 
     All models are trained on balanced data so no class_weight is needed.
-    SVM is trained and reported for spec compliance but EXCLUDED from the
-    soft-vote ensemble because CalibratedClassifierCV degrades to all-negative
-    predictions on this task (see evaluation notes).
+    Naive Bayes is trained and reported for comparison but excluded from the
+    soft-vote ensemble because its lower recall degrades MCQ ranking accuracy.
 
-    Ensemble members: LR + NB + RF  (3-model soft vote)
+    Ensemble members: LR + calibrated SVM + RF (3-model soft vote).
     """
     lrModel = LogisticRegression(
         C=1.0,

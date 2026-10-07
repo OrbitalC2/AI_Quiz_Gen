@@ -1,9 +1,17 @@
-from pathlib import Path
+"""Report distractor quality and fallback behavior on RACE examples."""
+
 import argparse
+from pathlib import Path
+import sys
 
 import pandas as pd
 
-from inference import loadPipeline
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.inference import loadPipeline
 
 
 def evaluateDistractorQuality(dataPath, limit=25):

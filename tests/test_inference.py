@@ -8,18 +8,22 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from template_quiz_pipeline import (  # noqa: E402
     AnswerCandidate,
+    DistractorRetriever,
+    EnsembleAnswerPredictor,
     ModelBDistractorHintGenerator,
+    TemplateQuizGenerator,
     buildTemplateQuestion,
     containsTokenPhrase,
     findAnswerCandidates,
     shuffleOptions,
 )
-from src.inference import loadPipeline  # noqa: E402
+from src.inference import DEFAULT_SAMPLE_ARTICLE, loadPipeline  # noqa: E402
 from question_ranker import (  # noqa: E402
     QUESTION_RANKER_FEATURE_NAMES,
     buildQuestionRankerFeatureVector,
     generateQuestionCandidates,
 )
+from ui.components.sample_data import SAMPLE_ARTICLES  # noqa: E402
 
 
 def testFindAnswerCandidatesGetsNamedEntity():
@@ -154,3 +158,27 @@ def testIncompatibleSamePassageCandidateIsNotEmergencyFiller():
 
     assert len(bundle["options"]) == 4
     assert "West" not in bundle["options"]
+
+
+def testBuiltInSamplesGenerateWithoutExternalCorpus(tmp_path):
+    """The bundled demo remains usable in a clean clone without RACE data."""
+    predictor = EnsembleAnswerPredictor()
+    retriever = DistractorRetriever(
+        csvPath=tmp_path / "missing.csv",
+        cachePath=tmp_path / "missing.joblib",
+    )
+    modelBGenerator = ModelBDistractorHintGenerator(
+        answerPredictor=predictor,
+        retriever=retriever,
+    )
+    generator = TemplateQuizGenerator(
+        answerPredictor=predictor,
+        modelBGenerator=modelBGenerator,
+        questionRanker=None,
+    )
+
+    demoArticles = [DEFAULT_SAMPLE_ARTICLE, *SAMPLE_ARTICLES.values()]
+    for articleText in demoArticles:
+        quiz = generator.buildQuiz(articleText)
+        assert len(quiz["options"]) == 4
+        assert quiz["correctAnswer"] in quiz["options"].values()

@@ -22,8 +22,12 @@ LogisticAnswerPredictor = EnsembleAnswerPredictor
 
 DEFAULT_SAMPLE_ARTICLE = """
 The James Webb Space Telescope was launched in December 2021. It orbits the Sun
-1.5 million kilometers away from Earth. Scientists use the telescope to observe
-distant galaxies and study how stars and planets form.
+1.5 million kilometers away from Earth at a point called L2. Scientists use the
+telescope to observe distant galaxies and study how stars and planets form. Webb
+detects infrared light, allowing it to peer through clouds of dust that block
+visible light. Its primary mirror is 6.5 metres across, made of 18 gold-coated
+hexagonal segments. The telescope is a collaboration between NASA, the European
+Space Agency, and the Canadian Space Agency.
 """.strip()
 
 

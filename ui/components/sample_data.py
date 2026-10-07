@@ -31,8 +31,9 @@ Space Agency, and the Canadian Space Agency.
 The mitochondrion is a double-membrane-bound organelle found in most eukaryotic
 organisms. It is often called the powerhouse of the cell because it generates most
 of the cell's supply of adenosine triphosphate, commonly known as ATP. Mitochondria
-have their own DNA and ribosomes, suggesting that they originated as free-living
-bacteria that were engulfed by a host cell in a process called endosymbiosis. The
+have their own DNA, RNA, and ribosomes, suggesting that they originated as
+free-living bacteria that were engulfed by a host cell in a process called
+endosymbiosis. The
 number of mitochondria in a cell varies widely depending on the tissue type and
 the energy requirements of that tissue.
 """.strip(),

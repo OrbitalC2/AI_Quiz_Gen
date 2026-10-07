@@ -694,9 +694,9 @@ class EnsembleAnswerPredictor:
     """
     Pure traditional-ML answer verifier.
 
-    Loads up to four trained classifiers (LR, Calibrated SVM, Naive Bayes,
-    Random Forest) and K-Means cluster artifacts, then produces soft-vote
-    probability scores for each answer option.
+    Loads up to four trained classifiers (LR, calibrated SVM, Naive Bayes,
+    Random Forest) and K-Means cluster artifacts. The answer score is a
+    soft vote across LR, SVM, and RF; Naive Bayes is retained for comparison.
 
     Feature vector (12 dimensions) — defined in features.py
     ----------------------------------------------------------
@@ -715,8 +715,9 @@ class EnsembleAnswerPredictor:
 
     Backward compatibility
     ----------------------
-    Falls back to LR-only scoring when SVM / RF / NB / KMeans artifacts
-    are absent, so old checkpoints continue to work without retraining.
+    Falls back to the available voting models when SVM / RF artifacts are
+    absent. Missing NB or K-Means artifacts also do not prevent inference, so
+    old checkpoints continue to work without retraining.
     """
 
     def __init__(self, modelDir=DEFAULT_MODEL_DIR, tieTolerance=0.003):
@@ -781,8 +782,11 @@ class EnsembleAnswerPredictor:
 
     def _softVoteProba(self, features):
         """
-        Soft-vote ensemble: mean predict_proba[:, 1] over LR + NB + RF.
-        SVM is excluded — see EnsembleAnswerPredictor docstring.
+        Soft-vote ensemble: mean predict_proba[:, 1] over LR + SVM + RF.
+
+        Naive Bayes is excluded because its lower recall degraded MCQ ranking
+        during evaluation. LR is required; unavailable SVM/RF models are
+        skipped.
         Gracefully skips any model that failed to load.
         """
         featArray = np.array(features, dtype=np.float32)
